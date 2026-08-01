@@ -1,0 +1,10 @@
+{
+  "name": "JaggedGem",
+  "description": "An AI chat interface with a glassmorphic see-through vinyl background, frosted 3D chat bubbles, and the quirky JaggedGem persona, completely free.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
