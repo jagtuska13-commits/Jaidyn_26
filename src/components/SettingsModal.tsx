@@ -30,6 +30,8 @@ interface SettingsModalProps {
   onToggleSearchGrounding: (enabled: boolean) => void;
   enableMapsGrounding: boolean;
   onToggleMapsGrounding: (enabled: boolean) => void;
+  glassOpacity: number;
+  onChangeGlassOpacity: (opacity: number) => void;
 }
 
 export function SettingsModal({
@@ -57,6 +59,8 @@ export function SettingsModal({
   onToggleSearchGrounding,
   enableMapsGrounding,
   onToggleMapsGrounding,
+  glassOpacity,
+  onChangeGlassOpacity,
 }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<'persona' | 'intelligence' | 'theme' | 'memory' | 'deepdive'>('persona');
   const [newMemory, setNewMemory] = useState('');
@@ -501,6 +505,37 @@ export function SettingsModal({
                     }`}
                   />
                 </button>
+              </div>
+
+              {/* Glass Bubble Opacity Slider */}
+              <div className="p-4 rounded-2xl bg-slate-950/50 border border-white/10 shadow-md space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-xl bg-purple-500/25 text-purple-300">
+                      <Palette className="w-5 h-5 text-purple-300" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white flex items-center space-x-2">
+                        <span>Glass Bubble Opacity</span>
+                        <span className="text-[10px] px-2 py-0.2 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-400/30">{Math.round(glassOpacity * 100)}%</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-300">Customize how transparent or opaque the chat bubbles look</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3 pt-1">
+                  <span className="text-[10px] text-slate-400 font-mono">See-through (20%)</span>
+                  <input
+                    type="range"
+                    min="0.2"
+                    max="0.95"
+                    step="0.05"
+                    value={glassOpacity}
+                    onChange={(e) => onChangeGlassOpacity(parseFloat(e.target.value))}
+                    className="flex-1 h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-400 border border-white/10"
+                  />
+                  <span className="text-[10px] text-slate-400 font-mono">Opaque (95%)</span>
+                </div>
               </div>
 
               <div>

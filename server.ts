@@ -294,11 +294,41 @@ async function startServer() {
         config.tools = [{ googleSearch: {} }];
       }
 
-      const response = await ai.models.generateContent({
-        model: targetModel,
-        contents: contents,
-        config: config
-      });
+      let response: any;
+      try {
+        response = await ai.models.generateContent({
+          model: targetModel,
+          contents: contents,
+          config: config
+        });
+      } catch (firstErr: any) {
+        const errMsg = String(firstErr?.message || firstErr);
+        const isQuota = firstErr?.status === 'RESOURCE_EXHAUSTED' || firstErr?.code === 429 || errMsg.includes('429') || errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED');
+
+        if (isQuota) {
+          console.warn("[Chat] Primary model hit quota limit. Attempting fallback to gemini-3.1-flash-lite without grounding tools...");
+          try {
+            response = await ai.models.generateContent({
+              model: "gemini-3.1-flash-lite",
+              contents: contents,
+              config: {
+                systemInstruction,
+                temperature: 0.7
+              }
+            });
+            targetModel = "gemini-3.1-flash-lite";
+          } catch (fallbackErr: any) {
+            console.error("[Chat] Fallback model also hit limit:", fallbackErr?.message || fallbackErr);
+            return res.json({
+              text: "⚠️ **Gemini API Quota Limit Reached**: The free-tier API rate limit has temporarily been reached. Please wait a minute and try sending your message again!",
+              modelUsed: "none",
+              isQuotaExceeded: true
+            });
+          }
+        } else {
+          throw firstErr;
+        }
+      }
 
       let responseText = response.text || "JaggedGem is speechless for a moment...";
 
@@ -365,6 +395,10 @@ async function startServer() {
       res.json({ text: response.text || "" });
     } catch (error: any) {
       console.error("[Transcribe] Error:", error);
+      const errMsg = String(error?.message || error);
+      if (error?.status === 'RESOURCE_EXHAUSTED' || error?.code === 429 || errMsg.includes('429') || errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+        return res.status(429).json({ error: "Voice transcription rate limit reached. Please try speaking again in a few moments." });
+      }
       res.status(500).json({ error: error.message || "Transcription failed" });
     }
   });
@@ -437,6 +471,10 @@ async function startServer() {
       }
     } catch (error: any) {
       console.error("[Generate Image] Error:", error);
+      const errMsg = String(error?.message || error);
+      if (error?.status === 'RESOURCE_EXHAUSTED' || error?.code === 429 || errMsg.includes('429') || errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+        return res.status(429).json({ error: "Gemini Image Studio quota limit reached. Please wait a minute before generating another image." });
+      }
       res.status(500).json({ error: error.message || "Image generation failed" });
     }
   });

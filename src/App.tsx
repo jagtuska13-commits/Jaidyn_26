@@ -7,6 +7,7 @@ import { LiveVoiceModal } from './components/LiveVoiceModal';
 import { BloomingFlower } from './components/BloomingFlower';
 import { startAmbientLavaSound, stopAmbientLavaSound, playLavaBubblePop } from './utils/lavaSound';
 import { startMechanicalKeyboardLoop, stopMechanicalKeyboardLoop } from './utils/keyboardSound';
+import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from './lib/firebase';
 import { Send, Sparkles, RotateCcw, Bot, User, Loader2, Zap, Sliders, Brain, Code, Globe, Compass, Palette, ArrowDown, Volume2, VolumeX, Mic, MicOff, Layers, BookOpen, Plus, Wand2, PhoneCall, MapPin, Search, Image as ImageIcon } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
@@ -29,6 +30,33 @@ const SUGGESTED_PROMPTS = [
 ];
 
 export default function App() {
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      console.error("Auth error:", err);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Signout error:", err);
+    }
+  };
+
   // Chat Pages / Sessions State
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
     try {
@@ -156,6 +184,11 @@ export default function App() {
     return saved !== null ? JSON.parse(saved) : true;
   });
 
+  const [glassOpacity, setGlassOpacity] = useState<number>(() => {
+    const saved = localStorage.getItem('jaggedgem_glass_opacity');
+    return saved !== null ? parseFloat(saved) : 0.55;
+  });
+
   // Gemini Intelligence State
   const [selectedModel, setSelectedModel] = useState<string>('gemini-3.5-flash');
   const [enableThinking, setEnableThinking] = useState<boolean>(false);
@@ -166,13 +199,31 @@ export default function App() {
   const [isImageStudioOpen, setIsImageStudioOpen] = useState<boolean>(false);
   const [isLiveVoiceOpen, setIsLiveVoiceOpen] = useState<boolean>(false);
 
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(() => {
+    return localStorage.getItem('jaggedgem_chat_input') || '';
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('jaggedgem_chat_input', input);
+  }, [input]);
 
   useEffect(() => {
     localStorage.setItem('jaggedgem_ambient_sound', JSON.stringify(ambientSoundEnabled));
@@ -188,7 +239,11 @@ export default function App() {
   }, [keyboardSoundEnabled]);
 
   useEffect(() => {
-    if (loading && keyboardSoundEnabled) {
+    localStorage.setItem('jaggedgem_glass_opacity', glassOpacity.toString());
+  }, [glassOpacity]);
+
+  useEffect(() => {
+    if (loading) {
       startMechanicalKeyboardLoop();
     } else {
       stopMechanicalKeyboardLoop();
@@ -196,7 +251,7 @@ export default function App() {
     return () => {
       stopMechanicalKeyboardLoop();
     };
-  }, [loading, keyboardSoundEnabled]);
+  }, [loading]);
 
   const recognitionRef = useRef<any>(null);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -714,7 +769,7 @@ export default function App() {
 
       {/* Glassmorphic Header - Pinned at top, shrink-0 */}
       <header className="shrink-0 relative z-20 backdrop-blur-2xl bg-slate-950/60 border-b border-white/10 shadow-xl">
-        <div className="max-w-[460px] w-full mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-4xl w-full mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2.5 min-w-0">
             <div className="relative flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-2xl bg-gradient-to-tr from-fuchsia-500 via-purple-500 to-cyan-400 shadow-[0_0_20px_rgba(236,72,153,0.5)] border border-white/30 animate-pulse">
               <Zap className="w-4.5 h-4.5 text-white" />
@@ -728,6 +783,12 @@ export default function App() {
                   <currentPersonaBadge.icon className="w-2.5 h-2.5" />
                   <span>{currentPersonaBadge.label}</span>
                 </span>
+
+                {/* Connectivity Status Dot */}
+                <div className="flex items-center space-x-1 px-1.5 py-0.5 bg-black/40 border border-white/10 rounded-full" title={isOnline ? "Network Connected (AI Ready)" : "Network Offline"}>
+                  <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.9)]'}`} />
+                  <span className="text-[9px] text-slate-300 font-medium hidden sm:inline">{isOnline ? 'Online' : 'Offline'}</span>
+                </div>
               </div>
               <p className="text-[11px] text-fuchsia-200/80 font-medium truncate">Pure frosted AI intelligence</p>
             </div>
@@ -735,6 +796,33 @@ export default function App() {
 
           {/* Right Action Controls - Compact Phone Toolbar */}
           <div className="flex items-center space-x-1.5 flex-shrink-0">
+            {user ? (
+              <div className="flex items-center space-x-2 bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/20 backdrop-blur-xl">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt={user.displayName || 'User'} className="w-5 h-5 rounded-full object-cover" />
+                ) : (
+                  <User className="w-3.5 h-3.5 text-cyan-300" />
+                )}
+                <span className="text-[11px] font-medium text-slate-200 hidden md:inline">{user.displayName || user.email}</span>
+                <button
+                  onClick={handleSignOut}
+                  className="text-[10px] text-pink-300 hover:text-white underline cursor-pointer ml-1"
+                  title="Sign Out"
+                >
+                  Out
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleGoogleSignIn}
+                className="flex items-center space-x-1 px-2.5 py-1.5 text-xs font-semibold bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 border border-cyan-400/40 rounded-xl transition-all shadow-md cursor-pointer backdrop-blur-xl text-slate-100 hover:text-white"
+                title="Sign in with Google"
+              >
+                <Globe className="w-3.5 h-3.5 text-cyan-300" />
+                <span className="text-[11px]">Sign In</span>
+              </button>
+            )}
+
             <button
               onClick={() => setIsHistoryOpen(true)}
               className="flex items-center space-x-1 px-2.5 py-1.5 text-xs font-semibold bg-gradient-to-r from-fuchsia-500/20 to-cyan-500/20 hover:from-fuchsia-500/30 hover:to-cyan-500/30 border border-fuchsia-400/40 rounded-xl transition-all shadow-md cursor-pointer backdrop-blur-xl text-slate-100 hover:text-white"
@@ -763,8 +851,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Chat Container - Mobile Phone Frame Constrained (Max-W 460px) */}
-      <main className="relative z-10 flex-1 max-w-[460px] w-full mx-auto px-3 py-3 sm:px-4 sm:py-4 flex flex-col min-h-0 overflow-hidden">
+      {/* Main Chat Container - Responsive Full Screen Width */}
+      <main className="relative z-10 flex-1 max-w-4xl w-full mx-auto px-4 py-4 sm:px-6 sm:py-6 flex flex-col min-h-0 overflow-hidden">
         {/* Chat Messages Scroll Area - Independent Scroll Container */}
         <div 
           onScroll={handleScroll}
@@ -799,10 +887,16 @@ export default function App() {
                   </div>
 
                   {/* Pure 3D See-Through Glass Bubble - Fully Round Corners with Popping 3D Drop Shadow */}
-                  <div className={`group relative max-w-[84%] sm:max-w-[72%] rounded-[26px] px-5 py-3.5 sm:px-5.5 sm:py-4 backdrop-blur-2xl transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.01] ${
+                  <div 
+                    style={{
+                      backgroundColor: isUser 
+                        ? `rgba(15, 23, 42, ${glassOpacity})` 
+                        : `rgba(3, 7, 18, ${Math.min(0.95, Number(glassOpacity) + 0.05)})`
+                    }}
+                    className={`group relative max-w-[84%] sm:max-w-[72%] rounded-[26px] px-5 py-3.5 sm:px-5.5 sm:py-4 backdrop-blur-2xl transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.01] ${
                     isUser
-                      ? 'bg-slate-900/50 border border-t-white/90 border-l-white/70 border-r-cyan-400/50 border-b-black/80 shadow-[0_22px_50px_-10px_rgba(0,0,0,0.85),0_12px_28px_-6px_rgba(6,182,212,0.45),inset_0_2.5px_2px_rgba(255,255,255,0.95),inset_0_-3px_8px_rgba(0,0,0,0.65),inset_2px_0_3px_rgba(255,255,255,0.5)] hover:border-cyan-300 hover:shadow-[0_30px_65px_-10px_rgba(0,0,0,0.95),0_18px_40px_-6px_rgba(6,182,212,0.65),inset_0_3px_2px_rgba(255,255,255,1),inset_0_-3px_8px_rgba(0,0,0,0.75)]'
-                      : 'bg-slate-950/55 border border-t-white/90 border-l-white/70 border-r-fuchsia-400/50 border-b-black/80 shadow-[0_22px_50px_-10px_rgba(0,0,0,0.85),0_12px_28px_-6px_rgba(217,70,239,0.45),inset_0_2.5px_2px_rgba(255,255,255,0.95),inset_0_-3px_8px_rgba(0,0,0,0.65),inset_2px_0_3px_rgba(255,255,255,0.5)] hover:border-fuchsia-300 hover:shadow-[0_30px_65px_-10px_rgba(0,0,0,0.95),0_18px_40px_-6px_rgba(217,70,239,0.65),inset_0_3px_2px_rgba(255,255,255,1),inset_0_-3px_8px_rgba(0,0,0,0.75)]'
+                      ? 'border border-t-white/90 border-l-white/70 border-r-cyan-400/50 border-b-black/80 shadow-[0_22px_50px_-10px_rgba(0,0,0,0.85),0_12px_28px_-6px_rgba(6,182,212,0.45),inset_0_2.5px_2px_rgba(255,255,255,0.95),inset_0_-3px_8px_rgba(0,0,0,0.65),inset_2px_0_3px_rgba(255,255,255,0.5)] hover:border-cyan-300 hover:shadow-[0_30px_65px_-10px_rgba(0,0,0,0.95),0_18px_40px_-6px_rgba(6,182,212,0.65),inset_0_3px_2px_rgba(255,255,255,1),inset_0_-3px_8px_rgba(0,0,0,0.75)]'
+                      : 'border border-t-white/90 border-l-white/70 border-r-fuchsia-400/50 border-b-black/80 shadow-[0_22px_50px_-10px_rgba(0,0,0,0.85),0_12px_28px_-6px_rgba(217,70,239,0.45),inset_0_2.5px_2px_rgba(255,255,255,0.95),inset_0_-3px_8px_rgba(0,0,0,0.65),inset_2px_0_3px_rgba(255,255,255,0.5)] hover:border-fuchsia-300 hover:shadow-[0_30px_65px_-10px_rgba(0,0,0,0.95),0_18px_40px_-6px_rgba(217,70,239,0.65),inset_0_3px_2px_rgba(255,255,255,1),inset_0_-3px_8px_rgba(0,0,0,0.75)]'
                   }`}>
                     {/* 3D Glass Surface Specular Glare & Refraction Neon Rim */}
                     <div className={`absolute top-0 inset-x-4 h-[2px] rounded-t-full bg-gradient-to-r ${isUser ? 'from-transparent via-cyan-200 to-transparent' : 'from-transparent via-fuchsia-200 to-transparent'} pointer-events-none z-20 opacity-95`} />
@@ -1132,6 +1226,8 @@ export default function App() {
         onToggleSearchGrounding={setEnableSearchGrounding}
         enableMapsGrounding={enableMapsGrounding}
         onToggleMapsGrounding={setEnableMapsGrounding}
+        glassOpacity={glassOpacity}
+        onChangeGlassOpacity={setGlassOpacity}
       />
 
       {/* Gemini Studio Image Generator & Editor Modal */}

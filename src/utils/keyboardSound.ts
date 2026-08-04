@@ -45,7 +45,7 @@ export function playKeyClick() {
     bandpass.Q.setValueAtTime(3.5, now);
 
     const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.12, now);
+    noiseGain.gain.setValueAtTime(0.05, now);
     noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.015);
 
     noiseNode.connect(bandpass);
@@ -59,7 +59,7 @@ export function playKeyClick() {
     thudOsc.frequency.exponentialRampToValueAtTime(40, now + 0.025);
 
     const thudGain = ctx.createGain();
-    thudGain.gain.setValueAtTime(0.08, now);
+    thudGain.gain.setValueAtTime(0.03, now);
     thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
 
     thudOsc.connect(thudGain);

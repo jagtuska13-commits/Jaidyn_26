@@ -66,6 +66,34 @@
   }
 }
 
+@keyframes lavaUpAndDown1 {
+  0% { transform: translateY(0px) scaleY(1) scaleX(1); }
+  50% { transform: translateY(-340px) scaleY(1.45) scaleX(0.82); }
+  100% { transform: translateY(0px) scaleY(1) scaleX(1); }
+}
+
+@keyframes lavaUpAndDown2 {
+  0% { transform: translateY(-180px) scaleY(1.25) scaleX(0.88); }
+  50% { transform: translateY(60px) scaleY(0.88) scaleX(1.18); }
+  100% { transform: translateY(-180px) scaleY(1.25) scaleX(0.88); }
+}
+
+@keyframes lavaUpAndDown3 {
+  0% { transform: translateY(90px) scaleY(0.92) scaleX(1.08); }
+  50% { transform: translateY(-300px) scaleY(1.4) scaleX(0.78); }
+  100% { transform: translateY(90px) scaleY(0.92) scaleX(1.08); }
+}
+
 .animate-blob {
   animation: blob 7s infinite;
+}
+
+.animate-pastel-flame-1 {
+  animation: lavaUpAndDown1 11s ease-in-out infinite;
+}
+.animate-pastel-flame-2 {
+  animation: lavaUpAndDown2 15s ease-in-out infinite;
+}
+.animate-pastel-flame-3 {
+  animation: lavaUpAndDown3 13s ease-in-out infinite;
 }

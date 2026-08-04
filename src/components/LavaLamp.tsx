@@ -17,17 +17,17 @@ interface PastelFlameTheme {
 
 const PASTEL_THEMES: Record<LavaPalette, PastelFlameTheme> = {
     cosmic: {
-    name: 'Cotton Candy Cosmic Flame',
-    bgGrad: 'linear-gradient(to bottom, #0f0a28 0%, #1c0e42 40%, #0a041c 100%)',
+    name: 'Reference Glass Lava Flame',
+    bgGrad: 'linear-gradient(to bottom, #000000 0%, #020205 50%, #000000 100%)',
     flameColors: [
-      'rgba(255, 60, 180, 1.0)',  // Vibrant Neon Pink
-      'rgba(200, 90, 255, 0.95)', // Glowing Violet Lilac
-      'rgba(56, 189, 248, 0.95)',  // Vivid Sky Blue
-      'rgba(251, 146, 60, 0.95)',  // Bright Glowing Peach
-      'rgba(250, 204, 21, 0.90)',  // Luminous Yellow Gold
+      'rgba(251, 146, 60, 1.0)',  // Vibrant Peach / Orange (top right in reference)
+      'rgba(217, 70, 239, 1.0)',  // Hot Magenta / Purple (top & center in reference)
+      'rgba(34, 211, 238, 1.0)',  // Neon Cyan (bottom right in reference)
+      'rgba(52, 211, 153, 1.0)',  // Mint Green (accent)
+      'rgba(244, 63, 94, 1.0)',   // Hot Coral Pink
     ],
-    glowColor: 'rgba(236, 72, 153, 0.55)',
-    accentAura: 'rgba(168, 85, 247, 0.45)',
+    glowColor: 'rgba(217, 70, 239, 0.6)',
+    accentAura: 'rgba(34, 211, 238, 0.5)',
   },
   volcanic: {
     name: 'Pastel Peach & Sunset Flame',
@@ -108,9 +108,9 @@ export function LavaLampBackground({ palette = 'cosmic' }: LavaLampProps) {
       canvas.height = height;
 
       const minDim = Math.min(width, height);
-      const count = Math.min(16, Math.max(8, Math.floor(width / 80)));
+      const blobCount = Math.min(16, Math.max(8, Math.floor(width / 80)));
 
-      blobs = Array.from({ length: count }).map((_, i) => {
+      blobs = Array.from({ length: blobCount }).map((_, i) => {
         const radius = (0.07 + Math.random() * 0.09) * minDim;
         const temp = Math.random(); // Random initial heat state
         return {
@@ -190,26 +190,26 @@ export function LavaLampBackground({ palette = 'cosmic' }: LavaLampProps) {
         b.phase += b.wobbleSpeed;
 
         // Thermal Dynamics (Heating at bottom, Cooling at top)
-        if (b.y > height * 0.7) {
+        if (b.y > height * 0.75) {
           // Heat up at bottom pool
-          b.temp = Math.min(1.0, b.temp + dt * 0.35);
-        } else if (b.y < height * 0.25) {
+          b.temp = Math.min(1.0, b.temp + dt * 0.5);
+        } else if (b.y < height * 0.2) {
           // Cool down at top ceiling
-          b.temp = Math.max(0.0, b.temp - dt * 0.30);
+          b.temp = Math.max(0.0, b.temp - dt * 0.45);
         }
 
         // Target vertical velocity based on temperature buoyancy
-        // Hot (temp ~ 1) => buoyancy force UP (negative vy)
+        // Hot (temp ~ 1) => strong buoyancy force UP (negative vy)
         // Cold (temp ~ 0) => gravity force DOWN (positive vy)
-        const targetVy = (0.45 - b.temp) * 1.4; 
-        b.vy += (targetVy - b.vy) * dt * 2.0;
+        const targetVy = (0.5 - b.temp) * 2.2; 
+        b.vy += (targetVy - b.vy) * dt * 2.5;
 
         // Horizontal fluid drift and side wobble
-        b.vx += (Math.sin(b.phase) * 0.25 - b.vx) * dt * 1.5;
+        b.vx += (Math.sin(b.phase) * 0.3 - b.vx) * dt * 1.5;
 
         // Apply motion
-        b.y += b.vy * dt * 60;
-        b.x += b.vx * dt * 60;
+        b.y += b.vy * dt * 65;
+        b.x += b.vx * dt * 65;
 
         // Elongation stretch along motion vector
         const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);

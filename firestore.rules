@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidChatSession(data) {
+      return data.keys().hasAll(['id', 'userId', 'title', 'createdAt']) &&
+             data.keys().size() == 4 &&
+             data.id is string && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.userId is string && data.userId.size() <= 128 && data.userId == request.auth.uid &&
+             data.title is string && data.title.size() <= 200 &&
+             data.createdAt is string;
+    }
+
+    function isValidChatMessage(data) {
+      return data.keys().hasAll(['id', 'sessionId', 'userId', 'role', 'content', 'timestamp']) &&
+             data.keys().size() == 6 &&
+             data.id is string && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.sessionId is string && data.sessionId.size() <= 128 && data.sessionId.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.userId is string && data.userId.size() <= 128 && data.userId == request.auth.uid &&
+             data.role is string && data.role in ['user', 'model', 'system'] &&
+             data.content is string && data.content.size() <= 20000 &&
+             data.timestamp is string;
+    }
+
+    function isValidUserMemory(data) {
+      return data.keys().hasAll(['id', 'userId', 'content', 'updatedAt']) &&
+             data.keys().size() == 4 &&
+             data.id is string && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.userId is string && data.userId.size() <= 128 && data.userId == request.auth.uid &&
+             data.content is string && data.content.size() <= 2000 &&
+             data.updatedAt is string;
+    }
+
+    match /users/{userId}/sessions/{sessionId} {
+      allow read, list: if isOwner(userId) && isValidId(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidId(sessionId) && isValidChatSession(incoming()) && incoming().id == sessionId;
+      allow update: if isOwner(userId) && isValidId(userId) && isValidId(sessionId) && isValidChatSession(incoming()) && incoming().userId == existing().userId && incoming().id == existing().id;
+      allow delete: if isOwner(userId) && isValidId(userId) && isValidId(sessionId);
+
+      match /messages/{messageId} {
+        allow read, list: if isOwner(userId) && isValidId(userId) && isValidId(sessionId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(sessionId) && isValidId(messageId) &&
+                         exists(/databases/$(database)/documents/users/$(userId)/sessions/$(sessionId)) &&
+                         isValidChatMessage(incoming()) && incoming().id == messageId && incoming().sessionId == sessionId;
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(sessionId) && isValidId(messageId) &&
+                         isValidChatMessage(incoming()) && incoming().userId == existing().userId && incoming().id == existing().id && incoming().sessionId == existing().sessionId;
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(sessionId) && isValidId(messageId);
+      }
+    }
+
+    match /users/{userId}/memories/{memoryId} {
+      allow read, list: if isOwner(userId) && isValidId(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidId(memoryId) && isValidUserMemory(incoming()) && incoming().id == memoryId;
+      allow update: if isOwner(userId) && isValidId(userId) && isValidId(memoryId) && isValidUserMemory(incoming()) && incoming().userId == existing().userId && incoming().id == existing().id;
+      allow delete: if isOwner(userId) && isValidId(userId) && isValidId(memoryId);
+    }
+  }
+}
