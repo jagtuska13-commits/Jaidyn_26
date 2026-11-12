@@ -1110,19 +1110,6 @@ export default function App() {
               ? 'border-cyan-400/80 shadow-[0_0_25px_rgba(34,211,238,0.45),0_0_50px_rgba(217,70,239,0.25),inset_0_1px_1px_rgba(255,255,255,0.4)]'
               : 'border-t-white/30 border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.3)]'
           }`}>
-            {/* Animated Glow Ring on Focus */}
-            <AnimatePresence>
-              {isInputFocused && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.97 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.97 }}
-                  transition={{ duration: 0.25 }}
-                  className="absolute -inset-1 rounded-[28px] bg-gradient-to-r from-cyan-400/40 via-fuchsia-500/40 to-pink-500/40 blur-md pointer-events-none z-0 animate-pulse"
-                />
-              )}
-            </AnimatePresence>
-
             <input
               ref={inputRef}
               type="text"
