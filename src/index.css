@@ -97,3 +97,22 @@
 .animate-pastel-flame-3 {
   animation: lavaUpAndDown3 13s ease-in-out infinite;
 }
+
+/* Target the outer row/wrapper around the pill or chat bubble */
+.message-wrapper,
+.status-container {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0;
+}
+.ai-message-bubble {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  padding-left: 0;
+  padding-right: 0;
+}

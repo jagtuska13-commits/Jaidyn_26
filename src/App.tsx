@@ -888,19 +888,7 @@ export default function App() {
 
                   {/* Pure 3D See-Through Glass Bubble - Fully Round Corners with Popping 3D Drop Shadow */}
                   <div 
-                    style={{
-                      backgroundColor: isUser 
-                        ? `rgba(15, 23, 42, ${glassOpacity})` 
-                        : `rgba(3, 7, 18, ${Math.min(0.95, Number(glassOpacity) + 0.05)})`
-                    }}
-                    className={`group relative max-w-[84%] sm:max-w-[72%] rounded-[26px] px-5 py-3.5 sm:px-5.5 sm:py-4 backdrop-blur-2xl transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.01] ${
-                    isUser
-                      ? 'border border-t-white/90 border-l-white/70 border-r-cyan-400/50 border-b-black/80 shadow-[0_22px_50px_-10px_rgba(0,0,0,0.85),0_12px_28px_-6px_rgba(6,182,212,0.45),inset_0_2.5px_2px_rgba(255,255,255,0.95),inset_0_-3px_8px_rgba(0,0,0,0.65),inset_2px_0_3px_rgba(255,255,255,0.5)] hover:border-cyan-300 hover:shadow-[0_30px_65px_-10px_rgba(0,0,0,0.95),0_18px_40px_-6px_rgba(6,182,212,0.65),inset_0_3px_2px_rgba(255,255,255,1),inset_0_-3px_8px_rgba(0,0,0,0.75)]'
-                      : 'border border-t-white/90 border-l-white/70 border-r-fuchsia-400/50 border-b-black/80 shadow-[0_22px_50px_-10px_rgba(0,0,0,0.85),0_12px_28px_-6px_rgba(217,70,239,0.45),inset_0_2.5px_2px_rgba(255,255,255,0.95),inset_0_-3px_8px_rgba(0,0,0,0.65),inset_2px_0_3px_rgba(255,255,255,0.5)] hover:border-fuchsia-300 hover:shadow-[0_30px_65px_-10px_rgba(0,0,0,0.95),0_18px_40px_-6px_rgba(217,70,239,0.65),inset_0_3px_2px_rgba(255,255,255,1),inset_0_-3px_8px_rgba(0,0,0,0.75)]'
-                  }`}>
-                    {/* 3D Glass Surface Specular Glare & Refraction Neon Rim */}
-                    <div className={`absolute top-0 inset-x-4 h-[2px] rounded-t-full bg-gradient-to-r ${isUser ? 'from-transparent via-cyan-200 to-transparent' : 'from-transparent via-fuchsia-200 to-transparent'} pointer-events-none z-20 opacity-95`} />
-                    <div className="absolute inset-0 rounded-[26px] bg-gradient-to-br from-white/[0.16] via-transparent to-black/35 pointer-events-none z-10" />
+                    className="group relative max-w-[84%] sm:max-w-[72%] rounded-[26px] px-0 py-3.5 sm:py-4 transition-all duration-300 ease-out">
 
                     <div className="relative z-10 text-xs sm:text-sm leading-relaxed font-sans font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
                       {isUser ? (
