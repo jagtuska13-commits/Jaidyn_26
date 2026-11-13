@@ -1094,7 +1094,7 @@ export default function App() {
 
           {/* Input Bar with 3D Frosted Glass Surface */}
           <div className={`relative rounded-3xl bg-slate-950/70 border transition-all duration-300 backdrop-blur-2xl p-2.5 flex items-center space-x-2 ${
-            isInputFocused
+            isInputFocused && !loading
               ? 'border-cyan-400/80 shadow-[0_0_25px_rgba(34,211,238,0.45),0_0_50px_rgba(217,70,239,0.25),inset_0_1px_1px_rgba(255,255,255,0.4)]'
               : 'border-t-white/30 border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.3)]'
           }`}>
