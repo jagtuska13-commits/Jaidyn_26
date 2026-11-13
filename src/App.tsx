@@ -5,6 +5,7 @@ import { HistoryDrawer, ChatSession, Message } from './components/HistoryDrawer'
 import { ImageStudioModal } from './components/ImageStudioModal';
 import { LiveVoiceModal } from './components/LiveVoiceModal';
 import { BloomingFlower } from './components/BloomingFlower';
+import Loader from './components/ui/loader-15';
 import { startAmbientLavaSound, stopAmbientLavaSound, playLavaBubblePop } from './utils/lavaSound';
 import { startMechanicalKeyboardLoop, stopMechanicalKeyboardLoop } from './utils/keyboardSound';
 import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from './lib/firebase';
@@ -945,12 +946,8 @@ export default function App() {
                 <BloomingFlower className="w-5.5 h-5.5 sm:w-6 sm:h-6" isUser={false} />
               </div>
               <div className="rounded-[26px] px-5 py-3.5 bg-slate-950/55 border border-t-white/90 border-l-white/70 border-r-fuchsia-400/50 border-b-black/80 shadow-[0_22px_50px_-10px_rgba(0,0,0,0.85),0_12px_28px_-6px_rgba(217,70,239,0.45),inset_0_2.5px_2px_rgba(255,255,255,0.95),inset_0_-3px_8px_rgba(0,0,0,0.65)] backdrop-blur-2xl flex items-center space-x-3">
-                {/* Glowing Bouncing Typing Dots */}
-                <div className="flex items-center space-x-1.5 px-1 py-0.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-300 shadow-[0_0_10px_#22d3ee] animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2.5 h-2.5 rounded-full bg-fuchsia-300 shadow-[0_0_10px_#e879f9] animate-bounce" style={{ animationDelay: '200ms' }} />
-                  <span className="w-2.5 h-2.5 rounded-full bg-pink-300 shadow-[0_0_10px_#f472b6] animate-bounce" style={{ animationDelay: '400ms' }} />
-                </div>
+                {/* Loader-15 Loading Animation */}
+                <Loader size={40} />
                 <span className="text-xs sm:text-sm text-white/95 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
                   {activePersona === 'codegem'
                     ? 'CodeGem is compiling logic & analyzing dependencies...'
