@@ -207,7 +207,6 @@ export default function App() {
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
-  const [isInputFocused, setIsInputFocused] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
 
   useEffect(() => {
@@ -1093,19 +1092,13 @@ export default function App() {
           </div>
 
           {/* Input Bar with 3D Frosted Glass Surface */}
-          <div className={`relative rounded-3xl bg-slate-950/70 border transition-all duration-300 backdrop-blur-2xl p-2.5 flex items-center space-x-2 ${
-            isInputFocused && !loading
-              ? 'border-cyan-400/80 shadow-[0_0_25px_rgba(34,211,238,0.45),0_0_50px_rgba(217,70,239,0.25),inset_0_1px_1px_rgba(255,255,255,0.4)]'
-              : 'border-t-white/30 border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.3)]'
-          }`}>
+          <div className="relative rounded-3xl bg-slate-950/70 border border-t-white/30 border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.3)] transition-all duration-300 backdrop-blur-2xl p-2.5 flex items-center space-x-2">
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !loading && handleSend()}
-              onFocus={() => setIsInputFocused(true)}
-              onBlur={() => setIsInputFocused(false)}
               placeholder={isListening ? "Listening... Speak now..." : `Ask ${activePersona === 'codegem' ? 'CodeGem' : activePersona === 'deepdive' ? 'Deep Dive' : 'JaggedGem'} anything (100% free)...`}
               disabled={loading}
               className="flex-1 bg-transparent px-4 py-3 text-sm sm:text-base text-white placeholder-slate-400 focus:outline-none relative z-10 font-medium"
