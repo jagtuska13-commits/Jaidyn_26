@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { LavaLampBackground, LavaPalette } from './components/LavaLamp';
 import { SettingsModal, PersonaType } from './components/SettingsModal';
-import { HistoryDrawer, ChatSession, Message } from './components/HistoryDrawer';
+import { HistoryDrawer, ChatSession, Message, PromptAttachment } from './components/HistoryDrawer';
 import { ImageStudioModal } from './components/ImageStudioModal';
 import { LiveVoiceModal } from './components/LiveVoiceModal';
 import { BloomingFlower } from './components/BloomingFlower';
@@ -9,7 +9,7 @@ import Loader from './components/ui/loader-15';
 import { startAmbientLavaSound, stopAmbientLavaSound, playLavaBubblePop } from './utils/lavaSound';
 import { startMechanicalKeyboardLoop, stopMechanicalKeyboardLoop } from './utils/keyboardSound';
 import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from './lib/firebase';
-import { Send, Sparkles, RotateCcw, Bot, User, Loader2, Zap, Sliders, Brain, Code, Globe, Compass, Palette, ArrowDown, Volume2, VolumeX, Mic, MicOff, Layers, BookOpen, Plus, Wand2, PhoneCall, MapPin, Search, Image as ImageIcon } from 'lucide-react';
+import { Send, Sparkles, RotateCcw, Bot, User, Loader2, Zap, Sliders, Brain, Code, Globe, Compass, Palette, ArrowDown, Volume2, VolumeX, Mic, MicOff, Layers, BookOpen, Plus, Wand2, PhoneCall, MapPin, Search, Image as ImageIcon, X } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -108,10 +108,21 @@ export default function App() {
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
+  // Strip heavy attachment payloads before persisting to localStorage
+  const leanSessions = (sess: ChatSession[]): ChatSession[] =>
+    sess.map(s => ({
+      ...s,
+      messages: s.messages.map(m =>
+        m.attachments && m.attachments.length > 0
+          ? { ...m, attachments: m.attachments.map(a => ({ ...a, dataUrl: '' })) }
+          : m
+      )
+    }));
+
   // Sync sessions to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('jaggedgem_chat_sessions', JSON.stringify(sessions));
+      localStorage.setItem('jaggedgem_chat_sessions', JSON.stringify(leanSessions(sessions)));
     } catch (e) {
       console.error(e);
     }
@@ -203,6 +214,8 @@ export default function App() {
   const [input, setInput] = useState(() => {
     return localStorage.getItem('jaggedgem_chat_input') || '';
   });
+
+  const [attachments, setAttachments] = useState<PromptAttachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
@@ -596,7 +609,13 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('jaggedgem_chat_history', JSON.stringify(messages));
+      localStorage.setItem('jaggedgem_chat_history', JSON.stringify(
+        messages.map(m =>
+          m.attachments && m.attachments.length > 0
+            ? { ...m, attachments: m.attachments.map(a => ({ ...a, dataUrl: '' })) }
+            : m
+        )
+      ));
     } catch (e) {
       console.error(e);
     }
@@ -630,9 +649,50 @@ export default function App() {
     scrollToBottom();
   }, [messages, loading]);
 
+  // Inline image attachments for visual multi-modal prompting
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const MAX_ATTACHMENTS = 6;
+  const MAX_ATTACHMENT_MB = 8;
+
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  };
+
+  const handleAttachImages = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const room = MAX_ATTACHMENTS - attachments.length;
+    if (room <= 0) {
+      setError(`You can attach up to ${MAX_ATTACHMENTS} references at once. Remove one first.`);
+      return;
+    }
+    Array.from(files)
+      .filter(f => f.type.startsWith('image/'))
+      .slice(0, room)
+      .forEach(file => {
+        if (file.size > MAX_ATTACHMENT_MB * 1024 * 1024) {
+          setError(`"${file.name}" is larger than ${MAX_ATTACHMENT_MB}MB and was skipped.`);
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          const attachment: PromptAttachment = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            name: file.name,
+            mimeType: file.type,
+            size: file.size,
+            dataUrl: String(reader.result || '')
+          };
+          setAttachments(prev => (prev.length >= MAX_ATTACHMENTS ? prev : [...prev, attachment]));
+        };
+        reader.onerror = () => setError(`Could not read "${file.name}".`);
+        reader.readAsDataURL(file);
+      });
+  };
+
   const handleSend = async (textToSend?: string) => {
     const text = textToSend || input;
-    if (!text.trim() || loading) return;
+    const sendingAttachments = !textToSend ? attachments : [];
+    if ((!text.trim() && sendingAttachments.length === 0) || loading) return;
 
     const trimmedInput = text.trim().toLowerCase();
     if (trimmedInput === 'read my message' || trimmedInput === 'read message' || trimmedInput === 'read my last message') {
@@ -659,18 +719,25 @@ export default function App() {
       id: Date.now().toString(),
       role: 'user',
       content: text.trim(),
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      ...(sendingAttachments.length > 0 ? { attachments: sendingAttachments } : {})
     };
 
     setMessages(prev => [...prev, userMsg]);
-    if (!textToSend) setInput('');
+    if (!textToSend) {
+      setInput('');
+      setAttachments([]);
+    }
     setLoading(true);
     setError(null);
 
     try {
       const chatHistory = [...messages, userMsg].map(m => ({
         role: m.role,
-        content: m.content
+        content: m.content,
+        ...(m.attachments && m.attachments.length > 0
+          ? { attachments: m.attachments.map(a => ({ mimeType: a.mimeType, data: a.dataUrl.split(',')[1] || '' })) }
+          : {})
       }));
 
       const res = await fetch('/api/chat', {
@@ -730,6 +797,7 @@ export default function App() {
 
   const handleReset = () => {
     setMessages(INITIAL_MESSAGES);
+    setAttachments([]);
     try {
       localStorage.removeItem('jaggedgem_chat_history');
       localStorage.removeItem('jagged_jim_chat_history');
@@ -892,7 +960,22 @@ export default function App() {
 
                     <div className="relative z-10 text-xs sm:text-sm leading-relaxed font-sans font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
                       {isUser ? (
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                        <>
+                          {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                          {msg.attachments && msg.attachments.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2 justify-end max-w-[240px]">
+                              {msg.attachments.filter(a => a.dataUrl).map(a => (
+                                <img
+                                  key={a.id}
+                                  src={a.dataUrl}
+                                  alt={a.name}
+                                  title={a.name}
+                                  className="w-24 h-24 rounded-xl object-cover border border-white/25 shadow-md"
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <div className="markdown-body prose prose-invert max-w-none text-white text-xs sm:text-sm">
                           <Markdown>{msg.content}</Markdown>
@@ -1088,18 +1171,83 @@ export default function App() {
             </button>
           </div>
 
-          {/* Input Bar with 3D Frosted Glass Surface */}
-          <div className="relative rounded-3xl bg-slate-950/70 border border-t-white/30 border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.3)] transition-all duration-300 backdrop-blur-2xl p-2.5 flex items-center space-x-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !loading && handleSend()}
-              placeholder={isListening ? "Listening... Speak now..." : `Ask ${activePersona === 'codegem' ? 'CodeGem' : activePersona === 'deepdive' ? 'Deep Dive' : 'JaggedGem'} anything (100% free)...`}
-              disabled={loading}
-              className="flex-1 bg-transparent px-4 py-3 text-sm sm:text-base text-white placeholder-slate-400 focus:outline-none relative z-10 font-medium"
-            />
+          {/* Input Bar — Gradient-Bordered Frosted Glass Surface */}
+          <div className="relative rounded-3xl p-[1.5px] bg-white/15 focus-within:bg-gradient-to-r focus-within:from-fuchsia-500/60 focus-within:via-purple-500/50 focus-within:to-cyan-400/60 focus-within:shadow-[0_0_30px_rgba(192,38,211,0.28)] shadow-[0_20px_50px_rgba(0,0,0,0.65)] transition-all duration-500">
+            <div className="relative rounded-[22px] bg-slate-950/85 border-t border-t-white/30 backdrop-blur-2xl transition-all duration-300 p-2.5">
+              {/* Removable Attachment Thumbnails */}
+              <AnimatePresence>
+                {attachments.length > 0 && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex items-center gap-2 flex-wrap px-1 pt-0.5 pb-2.5">
+                      {attachments.map(att => (
+                        <motion.div
+                          key={att.id}
+                          layout
+                          initial={{ scale: 0.7, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.7, opacity: 0 }}
+                          transition={{ duration: 0.18 }}
+                          className="relative w-16 h-16 rounded-2xl overflow-hidden border border-white/20 shadow-lg bg-slate-900/80 flex-shrink-0"
+                        >
+                          <img src={att.dataUrl} alt={att.name} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAttachment(att.id)}
+                            title={`Remove ${att.name}`}
+                            aria-label={`Remove ${att.name}`}
+                            className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-slate-950/85 hover:bg-rose-500 border border-white/30 flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </motion.div>
+                      ))}
+                      <span className="text-[11px] text-slate-400 font-medium select-none">
+                        {attachments.length} reference{attachments.length > 1 ? 's' : ''} attached
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="flex items-center space-x-2">
+                {/* Attach Image References Button */}
+                <input
+                  ref={imageFileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  multiple
+                  className="hidden"
+                  onChange={e => {
+                    handleAttachImages(e.target.files);
+                    e.target.value = '';
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => imageFileInputRef.current?.click()}
+                  title="Attach image references"
+                  aria-label="Attach image references"
+                  className="flex items-center justify-center w-11 h-11 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/15 text-cyan-300 hover:text-white hover:scale-105 transition-all duration-300 shadow-lg cursor-pointer flex-shrink-0 relative z-10"
+                >
+                  <ImageIcon className="w-5 h-5" />
+                </button>
+
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !loading && handleSend()}
+                  placeholder={isListening ? "Listening... Speak now..." : attachments.length > 0 ? "Describe what to do with your references..." : `Ask ${activePersona === 'codegem' ? 'CodeGem' : activePersona === 'deepdive' ? 'Deep Dive' : 'JaggedGem'} anything (100% free)...`}
+                  disabled={loading}
+                  className="flex-1 bg-transparent px-2 py-3 text-sm sm:text-base text-white placeholder-slate-400 focus:outline-none relative z-10 font-medium"
+                />
 
             {/* Voice-to-Text Microphone Toggle Button */}
             <button
@@ -1147,15 +1295,17 @@ export default function App() {
 
             <button
               onClick={() => handleSend()}
-              disabled={loading || !input.trim()}
+              disabled={loading || (!input.trim() && attachments.length === 0)}
               className={`relative z-10 flex items-center justify-center w-11 h-11 rounded-2xl transition-all duration-300 shadow-lg cursor-pointer ${
-                loading || !input.trim()
+                loading || (!input.trim() && attachments.length === 0)
                   ? 'bg-white/10 text-slate-500 cursor-not-allowed border border-white/10'
                   : 'bg-gradient-to-tr from-fuchsia-500 via-purple-600 to-cyan-400 text-white hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(217,70,239,0.6)] border border-white/30'
               }`}
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </button>
+              </div>
+            </div>
           </div>
           <div className="text-center mt-2 flex items-center justify-center space-x-2">
             <p className="text-[11px] text-fuchsia-200/70 font-medium">

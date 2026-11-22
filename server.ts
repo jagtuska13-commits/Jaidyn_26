@@ -241,10 +241,21 @@ async function startServer() {
         }
       });
 
-      const contents = messages.map((m: any) => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }]
-      }));
+      const contents = messages.map((m: any) => {
+        const parts: any[] = [];
+        if (Array.isArray(m.attachments)) {
+          for (const a of m.attachments) {
+            if (a && a.mimeType && a.data) {
+              parts.push({ inlineData: { mimeType: a.mimeType, data: a.data } });
+            }
+          }
+        }
+        parts.push({ text: m.content || (parts.length > 0 ? 'Analyze the attached image reference(s).' : '') });
+        return {
+          role: m.role === 'user' ? 'user' : 'model',
+          parts
+        };
+      });
 
       // Base Persona Prompts
       let systemInstruction = "";

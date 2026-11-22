@@ -3,12 +3,21 @@ import { X, Plus, Layers, Merge, Volume2, BookOpen, Trash2, Edit2, Check, Messag
 import { motion, AnimatePresence } from 'motion/react';
 import { PersonaType } from './SettingsModal';
 
+export interface PromptAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  dataUrl: string;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
   personaUsed?: PersonaType;
+  attachments?: PromptAttachment[];
 }
 
 export interface ChatSession {
